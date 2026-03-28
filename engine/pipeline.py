@@ -13,3 +13,5 @@ def run_pipeline(df: pd.DataFrame) -> pd.DataFrame:
     df = generate_alerts(df)
 
     return df
+
+print("AI pipeline executed successfully")
