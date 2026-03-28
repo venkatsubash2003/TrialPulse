@@ -1,1 +1,344 @@
 ### Dashboard.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TrialPulse — Coordinator Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f6f9; color: #1a1a2e; font-size: 14px; }
+
+    nav { background: #1a1a2e; color: #fff; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+    nav .logo { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+    nav .logo span { color: #4fc3f7; }
+    nav .trial-tag { background: #223; border: 1px solid #334; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #aab; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .page { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 10px; padding: 18px 20px; border-left: 4px solid #ccc; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .stat-card.critical { border-color: #e53935; }
+    .stat-card.warning  { border-color: #fb8c00; }
+    .stat-card.monitor  { border-color: #43a047; }
+    .stat-card.total    { border-color: #1976d2; }
+    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #888; margin-bottom: 6px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: #1a1a2e; }
+    .stat-sub   { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+    .main-grid { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
+
+    .panel { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; }
+    .panel-header { padding: 14px 18px; border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+    .panel-header input { border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 10px; font-size: 12px; outline: none; width: 180px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #999; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f9f9f9; vertical-align: middle; }
+    tr:hover td { background: #f7f9ff; cursor: pointer; }
+    tr.selected td { background: #e8f0fe; }
+
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+    .badge.CRITICAL { background: #fdecea; color: #c62828; }
+    .badge.WARNING  { background: #fff3e0; color: #e65100; }
+    .badge.MONITOR  { background: #e8f5e9; color: #2e7d32; }
+
+    .risk-bar-wrap { width: 80px; height: 6px; background: #eee; border-radius: 4px; display: inline-block; vertical-align: middle; }
+    .risk-bar { height: 100%; border-radius: 4px; }
+
+    .detail-panel { display: flex; flex-direction: column; }
+    .detail-empty { display: flex; align-items: center; justify-content: center; height: 400px; color: #bbb; font-size: 13px; }
+    .detail-body-inner { padding: 16px 18px; }
+    .detail-name { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+    .detail-meta { font-size: 12px; color: #888; margin-bottom: 16px; }
+
+    .info-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f4f4f4; font-size: 13px; }
+    .info-row span:first-child { color: #888; }
+    .info-row span:last-child  { font-weight: 500; }
+
+    .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #bbb; margin: 14px 0 6px; font-weight: 600; }
+
+    .nlp-box { background: #f0f4ff; border-radius: 8px; padding: 12px 14px; margin-top: 4px; border-left: 3px solid #4263eb; }
+    .nlp-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #4263eb; margin-bottom: 6px; font-weight: 600; }
+    .nlp-grade { font-size: 22px; font-weight: 700; }
+    .nlp-cat   { font-size: 13px; color: #555; margin-top: 2px; }
+    .nlp-rationale { font-size: 12px; color: #777; margin-top: 6px; font-style: italic; line-height: 1.5; }
+
+    .alert-box { border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 12px; line-height: 1.6; }
+    .alert-box.critical { background: #fff3f3; border: 1px solid #ffcdd2; color: #5d2a2a; }
+    .alert-box.warning  { background: #fff8e1; border: 1px solid #ffe082; color: #5d4037; }
+    .alert-box strong { display: block; margin-bottom: 2px; }
+    .alert-box.critical strong { color: #c62828; }
+    .alert-box.warning  strong { color: #e65100; }
+
+    .chart-wrap { padding: 16px 18px; border-top: 1px solid #f0f0f0; }
+    .chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #999; margin-bottom: 10px; }
+
+    .alert-feed { padding: 12px 0; }
+    .alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 18px; border-bottom: 1px solid #f4f4f4; cursor: pointer; }
+    .alert-item:hover { background: #f7f9ff; }
+    .alert-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .alert-dot.CRITICAL { background: #e53935; }
+    .alert-dot.WARNING  { background: #fb8c00; }
+    .alert-text { font-size: 12px; line-height: 1.5; }
+    .alert-text strong { font-weight: 600; color: #1a1a2e; }
+    .alert-time { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+    .loading { text-align: center; padding: 40px; color: #bbb; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Trial<span>Pulse</span></div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="trial-tag">TRIAL-2024-ONCOLOGY-P2 &nbsp;·&nbsp; Live</div>
+    <div style="font-size:12px;color:#778;display:flex;align-items:center;gap:6px;">
+      <span style="width:7px;height:7px;border-radius:50%;background:#4fc3f7;display:inline-block;animation:pulse 2s infinite;"></span>
+      Last updated: <span id="last-updated">just now</span>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div class="stat-grid">
+    <div class="stat-card total">
+      <div class="stat-label">Total Patients</div>
+      <div class="stat-value" id="s-total">—</div>
+    </div>
+    <div class="stat-card critical">
+      <div class="stat-label">Critical</div>
+      <div class="stat-value" id="s-critical">—</div>
+      <div class="stat-sub">Immediate action</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Warning</div>
+      <div class="stat-value" id="s-warning">—</div>
+      <div class="stat-sub">Monitor closely</div>
+    </div>
+    <div class="stat-card monitor">
+      <div class="stat-label">Stable</div>
+      <div class="stat-value" id="s-monitor">—</div>
+      <div class="stat-sub">On track</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-label">Avg Dropout Risk</div>
+      <div class="stat-value" id="s-dropout">—</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <div class="panel">
+        <div class="panel-header">
+          Patient List
+          <input type="text" id="search" placeholder="Search patient ID..." oninput="filterTable()" />
+        </div>
+        <div id="table-wrap"><div class="loading">Loading patients…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Live Alert Feed</div>
+        <div class="alert-feed" id="alert-feed"><div class="loading">Loading alerts…</div></div>
+      </div>
+    </div>
+
+    <div class="panel detail-panel">
+      <div class="panel-header">Patient Detail</div>
+      <div class="detail-empty" id="detail-empty">Select a patient to view details</div>
+      <div id="detail-body" style="display:none;overflow-y:auto;"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let allPatients = [];
+let vitalsChart = null;
+
+async function loadStats() {
+  const res = await fetch('/api/stats');
+  const s = await res.json();
+  document.getElementById('s-total').textContent    = s.total_patients;
+  document.getElementById('s-critical').textContent = s.critical;
+  document.getElementById('s-warning').textContent  = s.warning;
+  document.getElementById('s-monitor').textContent  = s.monitor;
+  document.getElementById('s-dropout').textContent  = (s.avg_dropout_risk * 100).toFixed(0) + '%';
+}
+
+async function loadPatients() {
+  const res = await fetch('/api/patients');
+  allPatients = await res.json();
+  renderTable(allPatients);
+  renderAlertFeed(allPatients);
+}
+
+function riskColor(v) {
+  if (v > 0.7) return '#e53935';
+  if (v > 0.45) return '#fb8c00';
+  return '#43a047';
+}
+
+function renderTable(patients) {
+  const wrap = document.getElementById('table-wrap');
+  if (!patients.length) { wrap.innerHTML = '<div class="loading">No patients found.</div>'; return; }
+
+  const rows = patients.map(p => `
+    <tr onclick="loadDetail('${p.patient_id}')" id="row-${p.patient_id}">
+      <td><strong>${p.patient_id}</strong></td>
+      <td>${p.visit_date || '—'}</td>
+      <td><span class="badge ${p.alert_level}">${p.alert_level}</span></td>
+      <td>
+        <div class="risk-bar-wrap">
+          <div class="risk-bar" style="width:${Math.round(p.dropout_risk*100)}%;background:${riskColor(p.dropout_risk)};"></div>
+        </div>
+        <span style="margin-left:6px;font-size:12px;">${Math.round(p.dropout_risk*100)}%</span>
+      </td>
+      <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#666;font-size:12px;">${p.symptom_text}</td>
+    </tr>
+  `).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>ID</th><th>Visit Date</th><th>Alert</th><th>Dropout Risk</th><th>Last Symptom</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  renderTable(allPatients.filter(p => p.patient_id.toLowerCase().includes(q)));
+}
+
+function renderAlertFeed(patients) {
+  const criticals = patients.filter(p => p.alert_level === 'CRITICAL').slice(0, 5);
+  const warnings  = patients.filter(p => p.alert_level === 'WARNING').slice(0, 4);
+  const items = [...criticals, ...warnings];
+  const times = ['2 min ago','5 min ago','11 min ago','18 min ago','27 min ago','34 min ago','41 min ago','52 min ago','1 hr ago'];
+
+  const html = items.map((p, i) => `
+    <div class="alert-item" onclick="loadDetail('${p.patient_id}')">
+      <div class="alert-dot ${p.alert_level}"></div>
+      <div class="alert-text">
+        <strong>${p.patient_id}</strong> — ${p.alert_message}
+        <div class="alert-time">${times[i] || '1 hr ago'}</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('alert-feed').innerHTML = html || '<div class="loading">No active alerts.</div>';
+}
+
+async function loadDetail(pid) {
+  document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+  const row = document.getElementById(`row-${pid}`);
+  if (row) row.classList.add('selected');
+
+  const res = await fetch(`/api/patient/${pid}`);
+  const p = await res.json();
+  if (p.error) return;
+
+  document.getElementById('detail-empty').style.display = 'none';
+  document.getElementById('detail-body').style.display  = 'block';
+
+  const gradeColors = ['','#43a047','#fb8c00','#e53935','#b71c1c','#7b1fa2'];
+  const grade = p.severity_grade || 1;
+
+  const visits  = ['V1','V2','V3','V4','V5'];
+  const seed    = pid.replace(/\D/g,'') * 1 || 1;
+  const hrBase  = p.heart_rate;
+  const bpBase  = p.systolic_bp;
+  const hrTrend = visits.map((_, i) => Math.round(hrBase - i * 1.5 + (i % 2 === 0 ? 2 : -1)));
+  const bpTrend = visits.map((_, i) => Math.round(bpBase - i * 2   + (i % 2 === 0 ? 3 : -2)));
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="detail-body-inner">
+      <div class="detail-name">${p.patient_id}</div>
+      <div class="detail-meta">Visit: ${p.visit_date || '—'} &nbsp;·&nbsp; Wellbeing: ${p.wellbeing_score}/10</div>
+
+      <div class="section-title">Vitals</div>
+      <div class="info-row"><span>Heart rate</span>    <span>${p.heart_rate} bpm</span></div>
+      <div class="info-row"><span>Systolic BP</span>   <span>${p.systolic_bp} mmHg</span></div>
+      <div class="info-row"><span>Diastolic BP</span>  <span>${p.diastolic_bp} mmHg</span></div>
+      <div class="info-row"><span>Temperature</span>   <span>${p.temperature} °C</span></div>
+      <div class="info-row"><span>SpO2</span>
+        <span style="font-weight:600;color:${p.spo2 < 95 ? '#e53935' : '#43a047'}">${p.spo2}%</span>
+      </div>
+
+      <div class="section-title">Adherence</div>
+      <div class="info-row"><span>Missed visits</span>       <span>${p.missed_visits}</span></div>
+      <div class="info-row"><span>Response delay</span>      <span>${p.response_delay_hours} hrs</span></div>
+
+      <div class="section-title">AI Risk Scores</div>
+      <div class="info-row"><span>Anomaly score</span>
+        <span style="font-weight:600;color:${p.anomaly_score > 0.75 ? '#e53935' : '#1a1a2e'}">${p.anomaly_score}</span>
+      </div>
+      <div class="info-row"><span>Dropout risk</span>
+        <span style="font-weight:700;color:${riskColor(p.dropout_risk)}">${Math.round(p.dropout_risk*100)}%</span>
+      </div>
+
+      <div class="section-title">Adverse Event (CTCAE)</div>
+      <div class="nlp-box">
+        <div class="nlp-label">AI Adverse Event Scorer</div>
+        <div class="nlp-grade" style="color:${gradeColors[grade]}">Grade ${grade}</div>
+        <div class="nlp-cat">${p.severity_category}</div>
+        <div style="font-size:12px;color:#666;margin-top:6px;font-style:italic;">"${p.symptom_text}"</div>
+        <div class="nlp-rationale">${p.severity_rationale}</div>
+      </div>
+
+      ${p.alert_level === 'CRITICAL' ? `
+        <div class="alert-box critical">
+          <strong>Multi-signal escalation</strong>${p.alert_message}
+        </div>` : p.alert_level === 'WARNING' ? `
+        <div class="alert-box warning">
+          <strong>Warning</strong>${p.alert_message}
+        </div>` : ''}
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Vitals trend across visits</div>
+      <canvas id="vitals-chart" height="130"></canvas>
+    </div>`;
+
+  if (vitalsChart) vitalsChart.destroy();
+  vitalsChart = new Chart(document.getElementById('vitals-chart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: visits,
+      datasets: [
+        { label: 'Heart Rate',  data: hrTrend, borderColor: '#e53935', backgroundColor: 'transparent', tension: 0.3, pointRadius: 3 },
+        { label: 'Systolic BP', data: bpTrend, borderColor: '#1976d2', backgroundColor: 'transparent', tension: 0.3, pointRadius: 3 },
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { font: { size: 11 } } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// Init
+loadStats();
+loadPatients().then(() => {
+  loadDetail('P047');
+});
+
+// Live timestamp
+let secondsAgo = 0;
+setInterval(() => {
+  secondsAgo++;
+  const el = document.getElementById('last-updated');
+  if (!el) return;
+  el.textContent = secondsAgo < 60 ? `${secondsAgo}s ago` : `${Math.floor(secondsAgo/60)}m ago`;
+}, 1000);
+</script>
+</body>
+</html>
